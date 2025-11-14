@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
-import Quill from 'quill';
-import 'quill/dist/quill.snow.css'; // Quill styles
+import type QuillType from 'quill';
+import 'quill/dist/quill.snow.css';
 
 export type RichTextEditorHandle = {
     getContent: () => string;
@@ -11,49 +11,41 @@ export type RichTextEditorHandle = {
 
 const RichTextEditor = forwardRef<RichTextEditorHandle>((_, ref) => {
     const editorRef = useRef<HTMLDivElement>(null);
-    const quillRef = useRef<Quill | null>(null);
+    const quillRef = useRef<QuillType | null>(null);
+    const initializedRef = useRef(false); // ✅ ref to prevent double init
 
     useEffect(() => {
-        if (editorRef.current) {
-            quillRef.current = new Quill(editorRef.current, {
-                theme: 'snow',
-                placeholder: 'Write something...',
-                modules: {
-                    toolbar: [
-                        [{ header: [1, 2, 3, false] }],
-                        ['bold', 'italic', 'underline', 'strike'],
-                        [{ color: [] }, { background: [] }], // <-- text and background color
-                        [{ list: 'ordered' }, { list: 'bullet' }],
-                        ['link', 'image'],
-                        ['clean'],
-                    ],
-                },
-            });
-        }
+        if (typeof window === 'undefined') return;
+        if (initializedRef.current) return; // skip if already initialized
 
-        return () => {
-            quillRef.current = null; // cleanup
-        };
+        import('quill').then((QuillModule) => {
+            const Quill = QuillModule.default;
+            if (editorRef.current) {
+                quillRef.current = new Quill(editorRef.current, {
+                    theme: 'snow',
+                    placeholder: 'Write something...',
+                    modules: {
+                        toolbar: [
+                            [{ header: [1, 2, 3, false] }],
+                            ['bold', 'italic', 'underline', 'strike'],
+                            [{ color: [] }, { background: [] }],
+                            [{ list: 'ordered' }, { list: 'bullet' }],
+                            ['link', 'image'],
+                            ['clean'],
+                        ],
+                    },
+                });
+                initializedRef.current = true; // mark as initialized
+            }
+        });
     }, []);
 
     useImperativeHandle(ref, () => ({
         getContent: () => quillRef.current?.root.innerHTML || '',
-        clear: () => {
-            if (quillRef.current) quillRef.current.setContents([]);
-        },
+        clear: () => quillRef.current?.setContents([]),
     }));
 
-    return (
-        <div
-            ref={editorRef}
-            style={{
-                height: '400px',
-                maxWidth: '800px',
-                margin: '0 auto',
-                background: 'white',
-            }}
-        />
-    );
+    return <div ref={editorRef} style={{ height: '400px', background: 'white' }} />;
 });
 
 RichTextEditor.displayName = 'RichTextEditor';

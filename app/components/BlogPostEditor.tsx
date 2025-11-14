@@ -1,7 +1,13 @@
 'use client';
 
 import React, { useRef, useState } from 'react';
-import RichTextEditor, { RichTextEditorHandle } from './RichTextEditor';
+import  { RichTextEditorHandle } from './RichTextEditor';
+import dynamic from 'next/dynamic';
+
+
+// Dynamically import RichTextEditor to avoid SSR
+const RichTextEditor = dynamic(() => import('./RichTextEditor'), { ssr: false });
+
 
 export default function BlogPostEditor() {
     const editorRef = useRef<RichTextEditorHandle>(null);
