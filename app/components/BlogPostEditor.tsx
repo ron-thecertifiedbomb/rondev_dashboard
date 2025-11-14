@@ -1,13 +1,11 @@
 'use client';
 
 import React, { useRef, useState } from 'react';
-import  { RichTextEditorHandle } from './RichTextEditor';
+import { RichTextEditorHandle } from './RichTextEditor';
 import dynamic from 'next/dynamic';
-
 
 // Dynamically import RichTextEditor to avoid SSR
 const RichTextEditor = dynamic(() => import('./RichTextEditor'), { ssr: false });
-
 
 export default function BlogPostEditor() {
     const editorRef = useRef<RichTextEditorHandle>(null);
@@ -33,7 +31,7 @@ export default function BlogPostEditor() {
             const saved = await res.json();
             alert('Blog posted!');
             setTitle(''); // clear title
-            editorRef.current?.clear(); // <-- clear editor content
+            editorRef.current?.clear(); // clear editor content
             console.log('Saved blog:', saved);
         } catch (err: unknown) {
             alert('Error posting blog: ' + (err instanceof Error ? err.message : String(err)));
@@ -41,8 +39,9 @@ export default function BlogPostEditor() {
             setLoading(false);
         }
     };
+
     return (
-        <div className="w-full flex justify-center mt-8">
+        <div className="w-full">
             <div className="w-full max-w-3xl">
                 <input
                     type="text"

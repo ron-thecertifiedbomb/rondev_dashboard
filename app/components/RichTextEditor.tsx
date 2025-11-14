@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
-import type QuillType from 'quill';
 import 'quill/dist/quill.snow.css';
+import Quill from 'quill';
 
 export type RichTextEditorHandle = {
     getContent: () => string;
@@ -11,33 +11,66 @@ export type RichTextEditorHandle = {
 
 const RichTextEditor = forwardRef<RichTextEditorHandle>((_, ref) => {
     const editorRef = useRef<HTMLDivElement>(null);
-    const quillRef = useRef<QuillType | null>(null);
-    const initializedRef = useRef(false); // ✅ ref to prevent double init
+    const quillRef = useRef<Quill | null>(null);
+
+    // Custom image handler for Cloudinary
+    const imageHandler = () => {
+        const input = document.createElement('input');
+        input.setAttribute('type', 'file');
+        input.setAttribute('accept', 'image/*');
+        input.click();
+
+        input.onchange = async () => {
+            const file = input.files?.[0];
+            if (!file) return;
+
+            try {
+                const formData = new FormData();
+                formData.append("file", file);
+
+                const res = await fetch("/api/upload-image", {
+                    method: "POST",
+                    body: formData,
+                });
+
+                const data = await res.json();
+                if (data.url && quillRef.current) {
+                    const range = quillRef.current.getSelection();
+                    quillRef.current.insertEmbed(range?.index || 0, "image", data.url);
+                }
+            } catch (err) {
+                console.error("Image upload failed:", err);
+                alert("Image upload failed");
+            }
+        };
+    };
 
     useEffect(() => {
-        if (typeof window === 'undefined') return;
-        if (initializedRef.current) return; // skip if already initialized
+        if (!editorRef.current) return;
 
-        import('quill').then((QuillModule) => {
-            const Quill = QuillModule.default;
-            if (editorRef.current) {
-                quillRef.current = new Quill(editorRef.current, {
-                    theme: 'snow',
-                    placeholder: 'Write something...',
-                    modules: {
-                        toolbar: [
-                            [{ header: [1, 2, 3, false] }],
-                            ['bold', 'italic', 'underline', 'strike'],
-                            [{ color: [] }, { background: [] }],
-                            [{ list: 'ordered' }, { list: 'bullet' }],
-                            ['link', 'image'],
-                            ['clean'],
-                        ],
+        quillRef.current = new Quill(editorRef.current, {
+            theme: 'snow',
+            placeholder: 'Write something...',
+            modules: {
+                toolbar: {
+                    container: [
+                        [{ header: [1, 2, 3, false] }],
+                        ['bold', 'italic', 'underline', 'strike'],
+                        [{ color: [] }, { background: [] }],
+                        [{ list: 'ordered' }, { list: 'bullet' }],
+                        ['link', 'image'],
+                        ['clean'],
+                    ],
+                    handlers: {
+                        image: imageHandler, // <-- custom handler
                     },
-                });
-                initializedRef.current = true; // mark as initialized
-            }
+                },
+            },
         });
+
+        return () => {
+            quillRef.current = null;
+        };
     }, []);
 
     useImperativeHandle(ref, () => ({
@@ -45,7 +78,17 @@ const RichTextEditor = forwardRef<RichTextEditorHandle>((_, ref) => {
         clear: () => quillRef.current?.setContents([]),
     }));
 
-    return <div ref={editorRef} style={{ height: '400px', background: 'white' }} />;
+    return (
+        <div
+            ref={editorRef}
+            style={{
+                height: '400px',
+                maxWidth: '800px',
+                margin: '0 auto',
+                background: 'white',
+            }}
+        />
+    );
 });
 
 RichTextEditor.displayName = 'RichTextEditor';
